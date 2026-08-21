@@ -1,0 +1,7 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: jwt-fastapi-backend
+    ports:
+      - "8000:8000"
