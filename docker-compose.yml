@@ -5,3 +5,7 @@ services:
     container_name: jwt-fastapi-backend
     ports:
       - "8000:8000"
+    environment:
+      APP_ADMIN_USERNAME: ${APP_ADMIN_USERNAME}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}

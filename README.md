@@ -78,11 +78,26 @@ El backend usa Poetry (`backend/pyproject.toml`) para gestionar dependencias:
 - uvicorn
 - pyjwt
 
+## Variables de entorno requeridas
+
+- `APP_ADMIN_USERNAME` (ejemplo: `admin`)
+- `APP_ADMIN_PASSWORD` (ejemplo: `admin123`)
+- `JWT_SECRET_KEY` (clave secreta para firmar/validar JWT)
+
+> Si falta cualquiera de estas variables, la aplicación falla al iniciar.
+
+Puedes usar `.env.example` como base:
+
+```bash
+cp .env.example .env
+```
+
 ## Ejecución con Docker Compose
 
 Desde la raíz del proyecto:
 
 ```bash
+cp .env.example .env
 docker compose up --build
 ```
 

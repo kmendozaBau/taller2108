@@ -7,7 +7,7 @@ ENV POETRY_VERSION=1.8.3 \
 
 WORKDIR /app
 
-COPY pyproject.toml ./
+COPY pyproject.toml poetry.lock ./
 
 RUN pip install --no-cache-dir "poetry==$POETRY_VERSION" \
     && poetry install --no-root --only main
