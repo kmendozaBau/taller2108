@@ -1,13 +1,12 @@
 import os
 import secrets
-from functools import lru_cache
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 
 import jwt
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-
-app = FastAPI(title="JWT FastAPI Demo")
+from pydantic import BaseModel, SecretStr
 
 
 def _require_env(name: str) -> str:
@@ -24,16 +23,16 @@ REFRESH_TOKEN_EXPIRE_SECONDS = 3600
 
 class Settings(BaseModel):
     admin_username: str
-    admin_password: str
-    jwt_secret_key: str
+    admin_password: SecretStr
+    jwt_secret_key: SecretStr
 
 
 @lru_cache
 def get_settings() -> Settings:
     return Settings(
         admin_username=_require_env("APP_ADMIN_USERNAME"),
-        admin_password=_require_env("APP_ADMIN_PASSWORD"),
-        jwt_secret_key=_require_env("JWT_SECRET_KEY"),
+        admin_password=SecretStr(_require_env("APP_ADMIN_PASSWORD")),
+        jwt_secret_key=SecretStr(_require_env("JWT_SECRET_KEY")),
     )
 
 
@@ -55,12 +54,18 @@ def _create_token(subject: str, token_type: str, expires_in_seconds: int) -> str
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(seconds=expires_in_seconds)).timestamp()),
     }
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=ALGORITHM)
+    return jwt.encode(
+        payload, settings.jwt_secret_key.get_secret_value(), algorithm=ALGORITHM
+    )
 
 
-@app.on_event("startup")
-def validate_settings() -> None:
+@asynccontextmanager
+async def lifespan(_: FastAPI):
     get_settings()
+    yield
+
+
+app = FastAPI(title="JWT FastAPI Demo", lifespan=lifespan)
 
 
 @app.post("/token")
@@ -68,7 +73,9 @@ def get_token(credentials: LoginRequest) -> dict:
     settings = get_settings()
     if not (
         secrets.compare_digest(credentials.username, settings.admin_username)
-        and secrets.compare_digest(credentials.password, settings.admin_password)
+        and secrets.compare_digest(
+            credentials.password, settings.admin_password.get_secret_value()
+        )
     ):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -92,7 +99,7 @@ def refresh_token(payload: RefreshRequest) -> dict:
     try:
         decoded = jwt.decode(
             payload.refresh_token,
-            settings.jwt_secret_key,
+            settings.jwt_secret_key.get_secret_value(),
             algorithms=[ALGORITHM],
             options={"require": ["exp", "sub", "type"]},
         )
